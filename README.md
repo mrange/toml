@@ -42,6 +42,7 @@ Table of contents
 - [Editor support](#user-content-editor-support)
 - [Encoder](#user-content-encoder)
 - [Converters](#user-content-converters)
+- [EBNF](#user-content-converters)
 
 Example
 -------
@@ -760,3 +761,42 @@ Converters
 - remarshal (@dbohdan) - https://github.com/dbohdan/remarshal
 - yaml2toml (@jtyr) - https://github.com/jtyr/yaml2toml-converter
 - yaml2toml.dart (@just95) - https://github.com/just95/yaml2toml.dart
+
+EBNF
+----------
+
+```ebnf
+anychar         ::= <parses any character>
+except literal  ::= <parses any character except 'literal'>
+whitespace      ::= <parses any whitespace character>
+eos             ::= <parses END OF STREAM>
+eol             ::= <parses END OF LINE (END OF STREAM counts as END OF LINE)>
+
+
+basic_string              ::=
+multi-line_string         ::=
+basic_literal_string      ::= ' (except ')* '
+multi-line_literal_string ::= ''' (except ''')* '''
+
+string                    ::= basic_string | multi-line_string | basic_literal_string | multi-line_literal_string
+
+boolean                   ::=
+
+int64                     ::=
+float64                   ::=
+
+datetime                  ::=
+
+array                     ::= [] | [ value (, value)* ,? ]
+
+value                     ::= array | string | boolean | datetime | float64 | int64
+
+bare_key                  ::= [A-Za-z0-9_-]+
+quoted_key                ::= basic_string
+key                       ::= bare_key | quoted_key
+
+path                      ::= key (. key)*
+table                     ::= [ path ] (key = value)*
+table_array               ::= [[ path ]] (key = value)*
+# inline_table              ::= TBW
+```
