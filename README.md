@@ -42,7 +42,7 @@ Table of contents
 - [Editor support](#user-content-editor-support)
 - [Encoder](#user-content-encoder)
 - [Converters](#user-content-converters)
-- [EBNF](#user-content-converters)
+- [TOML EBNF Grammar](#user-content-toml-ebnf-grammar)
 
 Example
 -------
@@ -59,7 +59,7 @@ dob = 1979-05-27T07:32:00-08:00 # First class dates
 [database]
 server = "192.168.1.1"
 ports = [ 8001, 8001, 8002 ]
-connection_max = 5000
+connection-max = 5000
 enabled = true
 
 [servers]
@@ -130,7 +130,7 @@ For convenience, some popular characters have a compact escape sequence.
 ```
 
 Any Unicode character may be escaped with the `\uXXXX` or `\UXXXXXXXX` forms.
-The escape codes must be valid Unicode [scalar values](http://unicode.org/glossary/#unicode_scalar_value).
+The escape codes must be valid Unicode [scalar values](http://unicode.org/glossary/#unicode-scalar-value).
 
 All other escape sequences not listed above are reserved and, if used, TOML
 should produce an error.
@@ -240,9 +240,9 @@ For large numbers, you may use underscores to enhance readability. Each
 underscore must be surrounded by at least one digit.
 
 ```toml
-int5 = 1_000
-int6 = 5_349_221
-int7 = 1_2_3_4_5     # valid but inadvisable
+int5 = 1-000
+int6 = 5-349-221
+int7 = 1-2-3-4-5     # valid but inadvisable
 ```
 
 Leading zeros are not allowed. Hex, octal, and binary forms are not allowed.
@@ -283,8 +283,8 @@ Similar to integers, you may use underscores to enhance readability. Each
 underscore must be surrounded by at least one digit.
 
 ```toml
-flt8 = 9_224_617.445_991_228_313
-flt9 = 1e1_000
+flt8 = 9-224-617.445-991-228-313
+flt9 = 1e1-000
 ```
 
 64-bit (double) precision expected.
@@ -358,7 +358,7 @@ is ignored around key names and values. The key, equals sign, and value must
 be on the same line (though some values can be broken over multiple lines).
 
 Keys may be either bare or quoted. **Bare keys** may only contain letters,
-numbers, underscores, and dashes (`A-Za-z0-9_-`). Note that bare keys are
+numbers, underscores, and dashes (`A-Za-z0-9--`). Note that bare keys are
 allowed to be composed of only digits, e.g. `1234`. **Quoted keys** follow the
 exact same rules as basic strings and allow you to use a much broader set of key
 names. Best practice is to use bare keys except when absolutely necessary.
@@ -368,7 +368,7 @@ Key/value pairs within tables are not guaranteed to be in any specific order.
 ```toml
 [table]
 key = "value"
-bare_key = "value"
+bare-key = "value"
 bare-key = "value"
 1234 = "bare integer"
 
@@ -742,7 +742,7 @@ Editor support
 - Atom - https://github.com/atom/language-toml
 - Emacs (@dryman) - https://github.com/dryman/toml-mode.el
 - Notepad++ (@fireforge) - https://github.com/fireforge/toml-notepadplusplus
-- Sublime Text 2 & 3 (@Gakai) - https://github.com/Gakai/sublime_toml_highlighting
+- Sublime Text 2 & 3 (@Gakai) - https://github.com/Gakai/sublime-toml-highlighting
 - Synwrite - http://uvviewsoft.com/synwrite/download.html ; call Options/ Addons manager/ Install
 - TextMate (@infininight) - https://github.com/textmate/toml.tmbundle
 - Vim (@cespare) - https://github.com/cespare/vim-toml
@@ -762,41 +762,102 @@ Converters
 - yaml2toml (@jtyr) - https://github.com/jtyr/yaml2toml-converter
 - yaml2toml.dart (@just95) - https://github.com/just95/yaml2toml.dart
 
-EBNF
-----------
+TOML EBNF Grammar
+-----------------
 
 ```ebnf
-anychar         ::= <parses any character>
-except literal  ::= <parses any character except 'literal'>
-whitespace      ::= <parses any whitespace character>
-eos             ::= <parses END OF STREAM>
-eol             ::= <parses END OF LINE (END OF STREAM counts as END OF LINE)>
+(* TOML Comments '#' should be handled by a lexer or similar *)
+anychar                   = <parses any character>
+whitespace                = <parses any whitespace character>
+eos                       = <parses END OF STREAM>
+eol                       = <parses END OF LINE (END OF STREAM counts as END OF LINE)>
+bare-key-char             = <parses any character in (A-Z|a-z|0-9|-)>
+digit                     = <parses any character in (0-9)>
 
+ws                        = {whitespace}
 
-basic_string              ::=
-multi-line_string         ::=
-basic_literal_string      ::= ' (except ')* '
-multi-line_literal_string ::= ''' (except ''')* '''
+string-delimiter          = "\""
+literal-string-delimiter  = "'"
 
-string                    ::= basic_string | multi-line_string | basic_literal_string | multi-line_literal_string
+(* To be completed *)
+basic-string              = string-delimiter, {anychar - ("'" | eol)}, string-delimiter ;
+multi-line-string         = 3*string-delimiter, [eol], {anychar - "'"}, 3*string-delimiter ;
+basic-literal-string      = literal-string-delimiter, {anychar - ("'" | eol)}, literal-string-delimiter ;
+multi-line-literal-string = 3*literal-string-delimiter, [eol], {anychar - "'"}, 3*literal-string-delimiter ;
 
-boolean                   ::=
+string                    = basic-string
+                          | multi-line-string
+                          | basic-literal-string
+                          | multi-line-literal-string
+                          ;
 
-int64                     ::=
-float64                   ::=
+boolean                   = "true"
+                          | "false"
+                          ;
 
-datetime                  ::=
+sign                      = "+"
+                          | "-"
+                          ;
 
-array                     ::= [] | [ value (, value)* ,? ]
+digits                    = digit, {["_"], digit} ;
+fraction                  = ".", digits
+exponent                  = [sign], ("e" | "E"), digits
 
-value                     ::= array | string | boolean | datetime | float64 | int64
+int64                     = [sign], digits ;
+float64                   = [sign], digits, [fraction], [exponent] ;
 
-bare_key                  ::= [A-Za-z0-9_-]+
-quoted_key                ::= basic_string
-key                       ::= bare_key | quoted_key
+date-fullyear             = 4*digit ;
+date-month                = 2*digit ; // 01-12
+date-mday                 = 2*digit ; // 01-28, 01-29, 01-30, 01-31 based on
+                                      // month/year
+time-hour                 = 2*digit ; // 00-23
+time-minute               = 2*digit ; // 00-59
+time-second               = 2*digit ; // 00-58, 00-59, 00-60 based on leap second
+                                      // rules
+time-secfrac              = ".", digit ;
+time-numoffset            = sign, time-hour, ":", time-minute ;
+time-offset               = "Z" | time-numoffset ;
 
-path                      ::= key (. key)*
-table                     ::= [ path ] (key = value)*
-table_array               ::= [[ path ]] (key = value)*
-# inline_table              ::= TBW
+partial-time              = time-hour, ":", time-minute, ":", time-second, [time-secfrac] ;
+full-date                 = date-fullyear, "-", date-month, "-", date-mday ;
+full-time                 = partial-time, time-offset ;
+
+date-time                 = full-date, "T", full-time ;
+
+(*  During semantic check Parser shall report if arrays container elements
+    of multiple types are encountered
+    *)
+array                     = "[","]" | "[", value, {",", value}, [","], "]" ;
+
+value                     = array
+                          | string
+                          | boolean
+                          | datetime
+                          | float64
+                          | int64
+                          ;
+
+bare-key                  = bare-key-char, {bare-key-char} ;
+quoted-key                = basic-string ;
+key                       = bare-key
+                          | quoted-key
+                          ;
+
+key-value                 = key, ws, "=", ws, value, ws ;
+key-values                = {key-value} ;
+path                      = key, ws, {".", ws, key, ws} ;
+(*  During semantic check Parser shall report key with identical
+    identifiers (in the scope of a table) are encountered
+    *)
+table                     = ws, "[", ws, path, "]", ws, key-values ;
+table-array               = ws, "[[", ws, path, "]]", ws, key-values ;
+(*  To be written
+    inline-table              = TBW ;
+    *)
+
+(*  During semantic check Parser shall report tables with identical
+    identifiers are encountered
+    *)
+grammar                   = {table | table-array}, eos ;
+
 ```
